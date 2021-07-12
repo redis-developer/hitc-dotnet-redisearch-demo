@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using NRedi2Read.Services;
 using System.Threading.Tasks;
 using System;
-using System.Collections.Generic;
 
 namespace NRedi2Read.Controllers
 {
@@ -42,11 +41,16 @@ namespace NRedi2Read.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> GetBooks([FromQuery] int page = 0, [FromQuery] int pageSize = 10, [FromQuery] string q = "*")
+        public async Task<IActionResult> GetBooks(
+            [FromQuery] int page = 0, 
+            [FromQuery] int pageSize = 10, 
+            [FromQuery] string q = "*", 
+            [FromQuery] string sortBy = "title",
+            [FromQuery] string direction = "ASC")
         {
             try
             {
-                return Ok(await _bookService.PaginateBooks(q, page, pageSize));
+                return Ok(await _bookService.PaginateBooks(q, page, sortBy, direction, pageSize));
             }
             catch (Exception)
             {
@@ -97,11 +101,11 @@ namespace NRedi2Read.Controllers
         [Route("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> Search(string query)
+        public async Task<IActionResult> Search(string query, string sortBy, string direction)
         {
             try
             {
-                return Ok(await _bookService.Search(query));
+                return Ok(await _bookService.Search(query, sortBy, direction));
             }
             catch
             {

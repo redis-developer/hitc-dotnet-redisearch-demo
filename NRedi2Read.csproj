@@ -23,8 +23,8 @@
     <PackageReference Include="NRediSearch" Version="2.2.62" />
   </ItemGroup>
   <!-- uncomment below to build the client app -->
-  <!-- <Target Name="BuildClientApp" AfterTargets="Build">    
+   <!--<Target Name="BuildClientApp" AfterTargets="Build">    
     <Exec WorkingDirectory="./clientapp" command="yarn build" />
-  </Target> --> 
+  </Target>-->  
 
 </Project>

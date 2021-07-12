@@ -1,6 +1,17 @@
 <template>
     <div style="display: block;" v-if="isAuthenticated">
-        <span>Search: <input v-model="query"/> <button class="btn btn-primary" @click="updateQuery">Search</button></span>
+        <span>
+          Search: <input v-model="query"/> <button class="btn btn-primary" @click="updateQuery">Search</button>
+          Sort By: 
+          <select v-model="sortby" id="sortby" name="sortby">
+            <option value="title">Title</option>
+            <option value="price">Price</option>
+          </select>
+          <select v-model="direction" id="direction" name="direction">
+            <option value="ASC">Ascending</option>
+            <option value="DESC">Descending</option>
+          </select>
+        </span>
         <div id="app">            
             <ul :style="gridStyle" class="card-list">
                 <li id="bookCard" v-for="book in books" v-bind:key="book" class="card-item">
@@ -36,7 +47,9 @@ export default {
           books: {},
           page: 0,
           items_per_page: 6,
-          query: '*'
+          query: '*',
+          sortby: "title",
+          direction:"ASC"
       }
   },
   computed: {
@@ -74,8 +87,8 @@ export default {
       this.page=0;
       this.runQuery();
     },
-    runQuery(){
-      axios.get("/api/books?page="+this.page+"&pageSize="+this.items_per_page+"&q="+this.query).then(response=>{
+    runQuery(){      
+      axios.get(`/api/books?page=${this.page}&pageSize=${this.items_per_page}&q=${this.query}&sortBy=${this.sortby}&direction=${this.direction}`).then(response=>{
           this.books=response.data;
       });
     }

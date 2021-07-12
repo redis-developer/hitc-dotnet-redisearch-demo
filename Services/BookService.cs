@@ -11,7 +11,7 @@ namespace NRedi2Read.Services
 {
     public class BookService
     {
-        private const string BOOK_INDEX_NAME = "books-idex";
+        private const string BOOK_INDEX_NAME = "books-idx";
         private readonly IDatabase _db;
         private readonly Client _searchClient;
 
@@ -90,9 +90,11 @@ namespace NRedi2Read.Services
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        public async Task<IEnumerable<Book>> Search(string query)
+        public async Task<IEnumerable<Book>> Search(string query, string sortBy, string direction)
         {
             var q = new Query(query);
+            q.SortBy = sortBy;
+            q.SortAscending = direction == "ASC";
             var result = await _searchClient.SearchAsync(q);
             return result.AsList<Book>();
         }
@@ -104,9 +106,11 @@ namespace NRedi2Read.Services
         /// <param name="page"></param>
         /// <param name="pageSize"></param>
         /// <returns></returns>
-        public async Task<IList<Book>> PaginateBooks(string query, int page, int pageSize = 10)
+        public async Task<IList<Book>> PaginateBooks(string query, int page, string sortBy="title", string direction="ASC", int pageSize = 10)
         {
             var q = new Query(query);
+            q.SortBy = sortBy;
+            q.SortAscending = direction == "ASC";
             q.Limit(page * pageSize, pageSize);
             var results = await _searchClient.SearchAsync(q);
             return results.AsList<Book>();
@@ -133,6 +137,7 @@ namespace NRedi2Read.Services
             schema.AddSortableTextField("title");
             schema.AddTextField("subtitle");
             schema.AddTextField("description");
+            schema.AddSortableNumericField("price");
             schema.AddTagField("id");
             schema.AddTextField("authors.[0]");
             schema.AddTextField("authors.[1]");
