@@ -1,4 +1,3 @@
-using NRedi2Read.Providers;
 using NRedi2Read.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -12,6 +11,7 @@ using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Threading.Tasks;
+using StackExchange.Redis;
 
 namespace NRedi2Read
 {
@@ -47,7 +47,7 @@ namespace NRedi2Read
                 .AddRedis(connectionString);
             
             //services.Configure<Redis>(Configuration);
-            services.AddSingleton<RedisProvider>();
+            services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(connectionString));
             services.AddTransient<BookService>();
             services.AddTransient<CartService>();
             services.AddTransient<UserService>();

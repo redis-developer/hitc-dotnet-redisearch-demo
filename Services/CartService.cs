@@ -1,6 +1,5 @@
 using NRedi2Read.Helpers;
 using NRedi2Read.Models;
-using NRedi2Read.Providers;
 using NRediSearch;
 using StackExchange.Redis;
 using System;
@@ -12,12 +11,16 @@ namespace NRedi2Read.Services
 {
     public class CartService
     {
-        private readonly RedisProvider _redisProvider;
+        private const string CART_INDEX_NAME = "cart-idx";
+
+        private readonly IDatabase _db;
+        private readonly Client _searchClient;
         private readonly UserService _userService;
 
-        public CartService(RedisProvider redisProvider, UserService userService)
-        {
-            _redisProvider = redisProvider;
+        public CartService(IConnectionMultiplexer multiplexer, UserService userService)
+        {     
+            _db = multiplexer.GetDatabase();
+            _searchClient = new Client(CART_INDEX_NAME, _db);
             _userService = userService;
         }
 
@@ -27,9 +30,8 @@ namespace NRedi2Read.Services
         /// <param name="id"></param>
         /// <returns></returns>
         public async Task<Cart> Get(string id)
-        {
-            var db = _redisProvider.Database;
-            var result = await db.HashGetAllAsync(CartKey(id));
+        {            
+            var result = await _db.HashGetAllAsync(CartKey(id));
             var cart = RedisHelper.ConvertFromRedis<Cart>(result);
             cart.Items = ParseCartItems(result).ToArray();
             return cart;
@@ -49,8 +51,6 @@ namespace NRedi2Read.Services
                 var quantity = (long)entries.FirstOrDefault(e => e.Name == $"items:{id}:Quantity").Value;
                 yield return new CartItem { Isbn = isbn, Quantity = quantity, Price=price};
             }
-            
-            
         }
 
         /// <summary>
@@ -62,14 +62,13 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task AddToCart(string id, CartItem item)
         {
-            var db = _redisProvider.Database;
-            var closed = bool.Parse(await db.HashGetAsync(CartKey(id), "Closed"));
+            var closed = bool.Parse(await _db.HashGetAsync(CartKey(id), "Closed"));
             if (closed)
             {
                 throw new InvalidOperationException("Cart has already been closed out");
             }
             var key = CartKey(id);
-            await db.HashSetAsync(key, item.AsHashEntries(CartItemKey(id, item.Isbn)).ToArray());            
+            await _db.HashSetAsync(key, item.AsHashEntries(CartItemKey(id, item.Isbn)).ToArray());            
         }
 
         /// <summary>
@@ -80,8 +79,7 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task RemoveFromCart(string id, string isbn)
         {
-            var db = _redisProvider.Database;
-            await db.HashDeleteAsync(CartKey(id), CartItemHashFields(id,isbn));
+            await _db.HashDeleteAsync(CartKey(id), CartItemHashFields(id,isbn));
         }
 
         /// <summary>
@@ -92,21 +90,20 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<string> Create(string userId)
         {
-            var db = _redisProvider.Database;
             var currentCart = await GetCartForUser(userId);
             if (currentCart != null)
             {
                 return currentCart.Id;
             }
             var user = await _userService.Read(userId);
-            var newCartId = (await db.StringIncrementAsync("Cart:id")).ToString(); // get the cart id by incrmenting the current highestcart id
+            var newCartId = (await _db.StringIncrementAsync("Cart:id")).ToString(); // get the cart id by incrmenting the current highestcart id
             var cart = new Cart
             {
                 Id = newCartId,
                 UserId = userId, 
                 Items = null
             };
-            await db.HashSetAsync(CartKey(cart.Id), cart.AsHashEntries().ToArray());            
+            await _db.HashSetAsync(CartKey(cart.Id), cart.AsHashEntries().ToArray());            
             return cart.Id;
         }
 
@@ -118,12 +115,10 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<bool> Checkout(string id)
         {
-            var db = _redisProvider.Database;
-            
             var cart = await Get(id);
             
             await _userService.AddBooks(cart.UserId, new List<string>(cart.Items.Select(x => x.Isbn)).ToArray());            ;
-            await db.HashSetAsync(CartKey(id), "Closed", true);
+            await _db.HashSetAsync(CartKey(id), "Closed", true);
             return true;
         }
 
@@ -133,13 +128,11 @@ namespace NRedi2Read.Services
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Cart> GetCartForUser(string userId)
-        {
-            var db = _redisProvider.Database;
-            var client = new Client("cart-idx", db);
+        {            
             var query = new Query($"@UserId: {userId}");
             query.ReturnFields("Id","Closed");
             query.Limit(0,1);
-            var result = await client.SearchAsync(query);
+            var result = await _searchClient.SearchAsync(query);
             if (result.Documents.Count < 1)
             {
                 return null;
@@ -155,11 +148,9 @@ namespace NRedi2Read.Services
 
         public void CreateCartIndex()
         {
-            var db = _redisProvider.Database;
-            var client = new Client("cart-idx", db);
             try
             {
-                db.Execute("FT.DROPINDEX", "cart-idx");
+                _db.Execute("FT.DROPINDEX", "cart-idx");
             }
             catch (Exception)
             {
@@ -168,7 +159,7 @@ namespace NRedi2Read.Services
             var schema = new Schema();
             schema.AddSortableTextField("UserId");
             var options = new Client.ConfiguredIndexOptions(new Client.IndexDefinition(prefixes: new[] { "Cart:" }));
-            client.CreateIndex(schema, options);
+            _searchClient.CreateIndex(schema, options);
         }
 
         private RedisValue[] CartItemHashFields(string cartId, string isbn)

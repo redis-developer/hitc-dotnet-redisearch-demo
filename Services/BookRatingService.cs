@@ -1,6 +1,5 @@
 ﻿using NRedi2Read.Helpers;
 using NRedi2Read.Models;
-using NRedi2Read.Providers;
 using StackExchange.Redis;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,9 +10,9 @@ namespace NRedi2Read.Services
     {
         const string BOOK_RATING_KEY_FORMAT = "BookRating:{0}";
         private readonly IDatabase _db;
-        public BookRatingService(RedisProvider provider)
+        public BookRatingService(IConnectionMultiplexer multiplexer)
         {
-            _db = provider.Database;
+            _db = multiplexer.GetDatabase();
         }
 
         /// <summary>

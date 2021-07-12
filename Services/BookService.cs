@@ -1,6 +1,5 @@
 using NRedi2Read.Helpers;
 using NRedi2Read.Models;
-using NRedi2Read.Providers;
 using NRediSearch;
 using StackExchange.Redis;
 using System;
@@ -12,13 +11,14 @@ namespace NRedi2Read.Services
 {
     public class BookService
     {
-        private readonly RedisProvider _redisProvider;
+        private const string BOOK_INDEX_NAME = "books-idex";
+        private readonly IDatabase _db;
         private readonly Client _searchClient;
 
-        public BookService(RedisProvider redisProvider)
+        public BookService(IConnectionMultiplexer multiplexer)
         {
-            _redisProvider = redisProvider;
-            _searchClient = new Client("books-idx", _redisProvider.Database);
+            _db = multiplexer.GetDatabase();
+            _searchClient = new Client(BOOK_INDEX_NAME, _db);
         }
 
         /// <summary>
@@ -45,12 +45,11 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<bool> CreateBulk(IEnumerable<Book> books)
         {
-            var db = _redisProvider.Database;
             var tasks = new List<Task>();
             foreach(var book in books)
             {
                 var hashEntries = book.AsHashEntries().ToArray();
-                tasks.Add(db.HashSetAsync(BookKey(book.Id), hashEntries));
+                tasks.Add(_db.HashSetAsync(BookKey(book.Id), hashEntries));
             }
             await Task.WhenAll(tasks.ToArray());
 
@@ -63,9 +62,8 @@ namespace NRedi2Read.Services
         /// <param name="book"></param>
         /// <returns></returns>
         public async Task<Book> Create(Book book)
-        {
-            var db = _redisProvider.Database;
-            db.HashSet(BookKey(book.Id), book.AsHashEntries().ToArray());
+        {            
+            _db.HashSet(BookKey(book.Id), book.AsHashEntries().ToArray());
             return await Get(book.Id);
         }
 
@@ -75,12 +73,11 @@ namespace NRedi2Read.Services
         /// <param name="ids"></param>
         /// <returns></returns>
         public async Task<IEnumerable<string>> GetBulk(IEnumerable<string> ids)
-        {
-            var db = _redisProvider.Database;
+        {            
             var tasks = new List<Task<RedisValue>>();
             foreach(var id in ids)
             {
-                tasks.Add(db.HashGetAsync(BookKey(id), "id"));
+                tasks.Add(_db.HashGetAsync(BookKey(id), "id"));
             }
             await Task.WhenAll(tasks);
             return tasks.Select(t => t.Result.ToString());
@@ -124,7 +121,7 @@ namespace NRedi2Read.Services
             // drop the index, if it doesn't exists, that's fine
             try
             {
-                await _redisProvider.Database.ExecuteAsync("FT.DROPINDEX", "books-idx");
+                await _db.ExecuteAsync("FT.DROPINDEX", "books-idx");
             }
             catch(Exception)
             {

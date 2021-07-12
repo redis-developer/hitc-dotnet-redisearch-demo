@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using NRedi2Read.Helpers;
 using NRedi2Read.Models;
-using NRedi2Read.Providers;
 using NRediSearch;
 using NRediSearch.QueryBuilder;
 using StackExchange.Redis;
@@ -14,13 +13,15 @@ namespace NRedi2Read.Services
 {
     public class UserService
     {
-        private readonly RedisProvider _redisProvider;
-
+        private const string USER_INDEX_NAME = "user-idx";
+        private readonly IDatabase _db;
+        private readonly Client _searchClient;
         private readonly int _bcryptWorkFactory;
 
-        public UserService(RedisProvider redisProvider, IConfiguration config)
+        public UserService(IConnectionMultiplexer multiplexer, IConfiguration config)
         {
-            _redisProvider = redisProvider;
+            _db = multiplexer.GetDatabase();
+            _searchClient = new Client(USER_INDEX_NAME, _db);
             if(config["BCryptWorkFactor"] != null)
             {
                 _bcryptWorkFactory = int.Parse(config["BCryptWorkFactor"]); // use a differnet work factor
@@ -38,15 +39,14 @@ namespace NRedi2Read.Services
         /// <param name="user"></param>
         /// <returns></returns>
         public async Task Create(User user)
-        {
-            var db = _redisProvider.Database;
+        {            
             user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
             if (user.Books!=null)
             {
-                await db.SetAddAsync(UserBookKey(user.Id), user.Books.Select(r => new RedisValue(r.ToString())).ToArray());
+                await _db.SetAddAsync(UserBookKey(user.Id), user.Books.Select(r => new RedisValue(r.ToString())).ToArray());
             }            
             user.Books = null;
-            await db.HashSetAsync(UserKey(user.Id), user.AsHashEntries().ToArray());
+            await _db.HashSetAsync(UserKey(user.Id), user.AsHashEntries().ToArray());
         }
 
         /// <summary>
@@ -56,9 +56,8 @@ namespace NRedi2Read.Services
         /// <param name="books"></param>
         /// <returns></returns>
         public async Task AddBooks(string id, params string[] books)
-        {
-            var db = _redisProvider.Database;
-            await db.SetAddAsync(UserBookKey(id), books.Select(b=>new RedisValue(b)).ToArray());
+        {            
+            await _db.SetAddAsync(UserBookKey(id), books.Select(b=>new RedisValue(b)).ToArray());
         }
 
         /// <summary>
@@ -70,17 +69,16 @@ namespace NRedi2Read.Services
         /// <param name="users"></param>
         /// <returns></returns>
         public async Task CreateBulk(IEnumerable<User> users)
-        {
-            var db = _redisProvider.Database;
+        {            
             var tasks = new List<Task>();
             foreach(var user in users)
             {
                 user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password, _bcryptWorkFactory);
                 if (user.Books != null)
                 {
-                    tasks.Add(db.SetAddAsync(UserBookKey(user.Id), user.Books.Select(r => new RedisValue(r.ToString())).ToArray()));
+                    tasks.Add(_db.SetAddAsync(UserBookKey(user.Id), user.Books.Select(r => new RedisValue(r.ToString())).ToArray()));
                 }
-                tasks.Add(db.HashSetAsync(UserKey(user.Id), user.AsHashEntries().ToArray()));
+                tasks.Add(_db.HashSetAsync(UserKey(user.Id), user.AsHashEntries().ToArray()));
             }
             await Task.WhenAll(tasks);
         }
@@ -91,12 +89,11 @@ namespace NRedi2Read.Services
         /// <param name="ids"></param>
         /// <returns></returns>
         public async Task<IEnumerable<string>> CheckBulk(IEnumerable<string> ids)
-        {
-            var db = _redisProvider.Database;
+        {            
             var tasks = new List<Task<bool>>();
             foreach (var id in ids)
             {
-                tasks.Add(db.KeyExistsAsync(UserKey(id)));
+                tasks.Add(_db.KeyExistsAsync(UserKey(id)));
             }
             await Task.WhenAll(tasks);
             return ids.Where((id, index) => tasks[index].Result);
@@ -109,10 +106,9 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<User> Read(string id)
         {
-            var db = _redisProvider.Database;
-            var result = await db.HashGetAllAsync(UserKey(id));
+            var result = await _db.HashGetAllAsync(UserKey(id));
             var user = RedisHelper.ConvertFromRedis<User>(result);
-            var books = await db.SetMembersAsync(UserBookKey(id));
+            var books = await _db.SetMembersAsync(UserBookKey(id));
             user.Books = books.Select(r=>r.ToString()).ToList();
             return user;
         }
@@ -134,11 +130,9 @@ namespace NRedi2Read.Services
 
         public void CreateUserIndex()
         {
-            var db = _redisProvider.Database;
-            var client = new Client("user-idx",db);
             try
             {
-                db.Execute("FT.DROPINDEX", "user-idx");
+                _db.Execute("FT.DROPINDEX", "user-idx");
             }
             catch
             {
@@ -148,12 +142,10 @@ namespace NRedi2Read.Services
             var schema = new Schema();
             schema.AddTagField("Email");            
             var options = new Client.ConfiguredIndexOptions(new Client.IndexDefinition(prefixes: new[] { "User:" }));
-            client.CreateIndex(schema, options);
+            _searchClient.CreateIndex(schema, options);
         }
 
-        public async Task<User> ValidateUserCredentials(string email, string password){
-            var db = _redisProvider.Database;
-            var client = new Client("user-idx", db);
+        public async Task<User> ValidateUserCredentials(string email, string password){                        
             var user = await GetUserWithEmail(email);
             if(user == null || !BCrypt.Net.BCrypt.Verify(password,user.Password))
             {
@@ -164,13 +156,11 @@ namespace NRedi2Read.Services
 
         public async Task<User> GetUserWithEmail(string email)
         {
-            var db = _redisProvider.Database;
-            var searchClient = new Client("user-idx", db);
             var escapedEmail = RediSearchEscape(email);
 
             var query = new Query($"@Email:{{{escapedEmail}}}");
             
-            var result = (await searchClient.SearchAsync(query)).Documents.FirstOrDefault();
+            var result = (await _searchClient.SearchAsync(query)).Documents.FirstOrDefault();
             if (result == null)
             {
                 return null;
