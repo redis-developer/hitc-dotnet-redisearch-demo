@@ -48,7 +48,7 @@ dotnet user-secrets set "BCryptWorkFactor" "4"
 
 Start up Docker:
  ```bash
- docker run -p 6379:6379 -it --rm redislabs/redismod:edge
+ docker run -p 6379:6379 -it --rm redislabs/redismod:latest
  ```
 
 Start the app (in separate shell)
