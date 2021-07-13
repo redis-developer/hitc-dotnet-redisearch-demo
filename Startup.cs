@@ -18,7 +18,7 @@ namespace NRedi2Read
     public class Startup
     {
         private IConfiguration Configuration { get; }
-        private const string SecretName = "CacheConnection";
+        private const string SecretName = "ConnectionString";
 
         private const string DEFAULT_CONNECTION_STRING = "localhost,abortConnect=false,ssl=false,allowAdmin=false,password=";
 

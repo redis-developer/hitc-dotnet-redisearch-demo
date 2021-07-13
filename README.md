@@ -36,7 +36,7 @@ You can also import the code straight into your IDE:
 Set the environment secrets
 ```bash
 dotnet user-secrets init
-dotnet user-secrets set CacheConnection "localhost,abortConnect=false,ssl=false,allowAdmin=false,password="
+dotnet user-secrets set ConnectionString "localhost,abortConnect=false,ssl=false,allowAdmin=false,password="
 ```
 
 #### Optional Configuration setup
