@@ -130,43 +130,19 @@ namespace NRedi2Read.Services
 
         public void CreateUserIndex()
         {
-            try
-            {
-                _db.Execute("FT.DROPINDEX", "user-idx");
-            }
-            catch
-            {
-                // do nothing
-            }
-
-            var schema = new Schema();
-            schema.AddTagField("Email");            
-            var options = new Client.ConfiguredIndexOptions(new Client.IndexDefinition(prefixes: new[] { "User:" }));
-            _searchClient.CreateIndex(schema, options);
+            // Add Index Creation Logic
         }
 
-        public async Task<User> ValidateUserCredentials(string email, string password){                        
-            var user = await GetUserWithEmail(email);
-            if(user == null || !BCrypt.Net.BCrypt.Verify(password,user.Password))
-            {
-                return null;
-            }
-            return new User { Email = user.Email, Name = user.Name, Id = user.Id };
+        public async Task<User> ValidateUserCredentials(string email, string password)
+        {
+            // Add validation logic!
+            return null;
         }
 
         public async Task<User> GetUserWithEmail(string email)
         {
-            var escapedEmail = RediSearchEscape(email);
-
-            var query = new Query($"@Email:{{{escapedEmail}}}");
-            
-            var result = (await _searchClient.SearchAsync(query)).Documents.FirstOrDefault();
-            if (result == null)
-            {
-                return null;
-            }
-            var user = await Read(result.Id.Split(':')[1]);
-            return user;
+            //add user query via email logic
+            return null;
         }
 
         public string RediSearchEscape(string inputString)

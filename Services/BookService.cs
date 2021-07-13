@@ -108,12 +108,7 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<IList<Book>> PaginateBooks(string query, int page, string sortBy="title", string direction="ASC", int pageSize = 10)
         {
-            var q = new Query(query);
-            q.SortBy = sortBy;
-            q.SortAscending = direction == "ASC";
-            q.Limit(page * pageSize, pageSize);
-            var results = await _searchClient.SearchAsync(q);
-            return results.AsList<Book>();
+            return null;
         }
 
         /// <summary>
@@ -122,34 +117,7 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task CreateBookIndex()
         {
-            // drop the index, if it doesn't exists, that's fine
-            try
-            {
-                await _db.ExecuteAsync("FT.DROPINDEX", "books-idx");
-            }
-            catch(Exception)
-            {
-                // books-idx didn't exist - don't do anything
-            }
-
-            var schema = new Schema();
-
-            schema.AddSortableTextField("title");
-            schema.AddTextField("subtitle");
-            schema.AddTextField("description");
-            schema.AddSortableNumericField("price");
-            schema.AddTagField("id");
-            schema.AddTextField("authors.[0]");
-            schema.AddTextField("authors.[1]");
-            schema.AddTextField("authors.[2]");
-            schema.AddTextField("authors.[3]");
-            schema.AddTextField("authors.[4]");
-            schema.AddTextField("authors.[5]");
-            schema.AddTextField("authors.[7]");
-            var options = new Client.ConfiguredIndexOptions(
-                new Client.IndexDefinition( prefixes: new [] { "Book:" } )
-            );
-            await _searchClient.CreateIndexAsync(schema, options);
+            
         }
         
         /// <summary>

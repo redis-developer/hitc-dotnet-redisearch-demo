@@ -128,38 +128,13 @@ namespace NRedi2Read.Services
         /// <param name="userId"></param>
         /// <returns></returns>
         public async Task<Cart> GetCartForUser(string userId)
-        {            
-            var query = new Query($"@UserId: {userId}");
-            query.ReturnFields("Id","Closed");
-            query.Limit(0,1);
-            var result = await _searchClient.SearchAsync(query);
-            if (result.Documents.Count < 1)
-            {
-                return null;
-            }
-            var cart = result.Documents.Where(x => x["Closed"] != "true").FirstOrDefault();
-            if(cart == null)
-            {
-                return null;
-            }
-            var idStr = result.Documents[0]["Id"].ToString();
-            return await Get(idStr);
+        {
+            return null;
         }
 
         public void CreateCartIndex()
         {
-            try
-            {
-                _db.Execute("FT.DROPINDEX", "cart-idx");
-            }
-            catch (Exception)
-            {
-                //do nothing, the index didn't exist
-            }
-            var schema = new Schema();
-            schema.AddSortableTextField("UserId");
-            var options = new Client.ConfiguredIndexOptions(new Client.IndexDefinition(prefixes: new[] { "Cart:" }));
-            _searchClient.CreateIndex(schema, options);
+            
         }
 
         private RedisValue[] CartItemHashFields(string cartId, string isbn)
