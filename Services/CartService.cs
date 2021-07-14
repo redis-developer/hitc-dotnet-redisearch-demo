@@ -129,19 +129,15 @@ namespace NRedi2Read.Services
         /// <returns></returns>
         public async Task<Cart> GetCartForUser(string userId)
         {            
-            var query = new Query($"@UserId: {userId}");
-            query.ReturnFields("Id","Closed");
-            query.Limit(0,1);
+            var query = new Query($"" +
+                $"@UserId:{{{RedisHelper.RediSearchEscape(userId)}}} " +
+                $"@Closed:{{{false}}}");
+            query.ReturnFields("Id");            
             var result = await _searchClient.SearchAsync(query);
             if (result.Documents.Count < 1)
             {
                 return null;
-            }
-            var cart = result.Documents.Where(x => x["Closed"] != "true").FirstOrDefault();
-            if(cart == null)
-            {
-                return null;
-            }
+            }            
             var idStr = result.Documents[0]["Id"].ToString();
             return await Get(idStr);
         }
@@ -157,7 +153,8 @@ namespace NRedi2Read.Services
                 //do nothing, the index didn't exist
             }
             var schema = new Schema();
-            schema.AddSortableTextField("UserId");
+            schema.AddTagField("UserId");
+            schema.AddTagField("Closed");
             var options = new Client.ConfiguredIndexOptions(new Client.IndexDefinition(prefixes: new[] { "Cart:" }));
             _searchClient.CreateIndex(schema, options);
         }

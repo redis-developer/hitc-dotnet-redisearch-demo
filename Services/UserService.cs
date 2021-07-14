@@ -156,7 +156,7 @@ namespace NRedi2Read.Services
 
         public async Task<User> GetUserWithEmail(string email)
         {
-            var escapedEmail = RediSearchEscape(email);
+            var escapedEmail = Helpers.RedisHelper.RediSearchEscape(email);
 
             var query = new Query($"@Email:{{{escapedEmail}}}");
             
@@ -167,21 +167,6 @@ namespace NRedi2Read.Services
             }
             var user = await Read(result.Id.Split(':')[1]);
             return user;
-        }
-
-        public string RediSearchEscape(string inputString)
-        {
-            var chars = new char[] { ',', '.', '<', '>', '{', '}', '[', ']', '"', '\'', ':', ';', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '~' };
-            var sb = new StringBuilder();
-            foreach(char c in inputString)
-            {
-                if (chars.Contains(c))
-                {
-                    sb.Append("\\");
-                }
-                sb.Append(c);
-            }
-            return sb.ToString();
-        }
+        }        
     }
 }
