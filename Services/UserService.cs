@@ -141,23 +141,8 @@ namespace NRedi2Read.Services
 
         public async Task<User> GetUserWithEmail(string email)
         {
-            //add user query via email logic
             return null;
         }
 
-        public string RediSearchEscape(string inputString)
-        {
-            var chars = new char[] { ',', '.', '<', '>', '{', '}', '[', ']', '"', '\'', ':', ';', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '~' };
-            var sb = new StringBuilder();
-            foreach(char c in inputString)
-            {
-                if (chars.Contains(c))
-                {
-                    sb.Append("\\");
-                }
-                sb.Append(c);
-            }
-            return sb.ToString();
-        }
     }
 }

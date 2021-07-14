@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 
@@ -82,6 +83,21 @@ namespace NRedi2Read.Helpers
                 }
             }
             return (T)obj;
+        }
+
+        public static string RediSearchEscape(string inputString)
+        {
+            var chars = new char[] { ',', '.', '<', '>', '{', '}', '[', ']', '"', '\'', ':', ';', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '~' };
+            var sb = new StringBuilder();
+            foreach (char c in inputString)
+            {
+                if (chars.Contains(c))
+                {
+                    sb.Append("\\");
+                }
+                sb.Append(c);
+            }
+            return sb.ToString();
         }
     }
 }
