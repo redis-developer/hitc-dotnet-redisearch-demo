@@ -18,7 +18,7 @@ namespace NRedi2Read
     public class Startup
     {
         private IConfiguration Configuration { get; }
-        private const string CONNECTION_STRING = "ConnectionString";
+        private const string CONNECTION_STRING_CONFIG_VAR = "ConnectionString";
 
         private const string DEFAULT_CONNECTION_STRING = "localhost,abortConnect=false,ssl=false,allowAdmin=false,password=";
 
@@ -40,7 +40,7 @@ namespace NRedi2Read
                 c.SwaggerDoc("v1", new OpenApiInfo {Title = "NRedi2Read-preview", Version = "v1"});
             });
 
-            var connectionString = !string.IsNullOrEmpty(Configuration[CONNECTION_STRING]) ? Configuration[CONNECTION_STRING] : DEFAULT_CONNECTION_STRING;
+            var connectionString = !string.IsNullOrEmpty(Configuration[CONNECTION_STRING_CONFIG_VAR]) ? Configuration[CONNECTION_STRING_CONFIG_VAR] : DEFAULT_CONNECTION_STRING;
 
             //Add Redis healthcheck
             services.AddHealthChecks()
