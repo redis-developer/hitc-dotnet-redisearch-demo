@@ -16,7 +16,7 @@ namespace NRedi2Read.Services
         private const string USER_INDEX_NAME = "user-idx";
         private readonly IDatabase _db;
         private readonly Client _searchClient;
-        private readonly int _bcryptWorkFactory;
+        private readonly int _bcryptWorkFactor;
 
         public UserService(IConnectionMultiplexer multiplexer, IConfiguration config)
         {
@@ -24,11 +24,11 @@ namespace NRedi2Read.Services
             _searchClient = new Client(USER_INDEX_NAME, _db);
             if(config["BCryptWorkFactor"] != null)
             {
-                _bcryptWorkFactory = int.Parse(config["BCryptWorkFactor"]); // use a differnet work factor
+                _bcryptWorkFactor = int.Parse(config["BCryptWorkFactor"]); // use a differnet work factor
             }
             else
             {
-                _bcryptWorkFactory = 11; // use the default
+                _bcryptWorkFactor = 11; // use the default
             }
 
         }
@@ -73,7 +73,7 @@ namespace NRedi2Read.Services
             var tasks = new List<Task>();
             foreach(var user in users)
             {
-                user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password, _bcryptWorkFactory);
+                user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password, _bcryptWorkFactor);
                 if (user.Books != null)
                 {
                     tasks.Add(_db.SetAddAsync(UserBookKey(user.Id), user.Books.Select(r => new RedisValue(r.ToString())).ToArray()));
