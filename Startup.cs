@@ -42,11 +42,6 @@ namespace NRedi2Read
 
             var connectionString = !string.IsNullOrEmpty(Configuration[CONNECTION_STRING_CONFIG_VAR]) ? Configuration[CONNECTION_STRING_CONFIG_VAR] : DEFAULT_CONNECTION_STRING;
 
-            //Add Redis healthcheck
-            services.AddHealthChecks()
-                .AddRedis(connectionString);
-            
-            //services.Configure<Redis>(Configuration);
             services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(connectionString));
             services.AddTransient<BookService>();
             services.AddTransient<CartService>();
